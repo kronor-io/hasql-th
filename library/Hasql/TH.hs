@@ -1,5 +1,5 @@
-module Hasql.TH
-  ( -- * Statements
+module Hasql.TH (
+    -- * Statements
 
     -- |
     --  Quasiquoters in this category produce Hasql `Statement`s,
@@ -101,8 +101,7 @@ module Hasql.TH
     --  For now they perform no compile-time checking.
     uncheckedSql,
     uncheckedSqlFile,
-  )
-where
+) where
 
 import qualified Data.Text as Text
 import qualified Data.Text.Encoding as Text
@@ -118,25 +117,78 @@ import qualified PostgresqlSyntax.Parsing as Parsing
 import qualified PostgresqlSyntax.Renaming as Renaming
 import Control.Monad.State (runState)
 
+import qualified PostgresqlSyntax.Rendering as Rendering
+
+import qualified Hasql.Connection
+import qualified Hasql.Session
+
+import qualified Data.ByteString as BS
+
+import qualified Database.PostgreSQL.LibPQ as LibPQ
+import qualified System.Environment
+import qualified System.IO.Unsafe as Unsafe
+
 -- * Helpers
+
 
 exp :: (String -> Q Exp) -> QuasiQuoter
 exp =
-  let _unsupported _ = fail "Unsupported"
-   in \_exp -> QuasiQuoter _exp _unsupported _unsupported _unsupported
+    let _unsupported _ = fail "Unsupported"
+     in \_exp -> QuasiQuoter _exp _unsupported _unsupported _unsupported
 
-expParser :: (Text -> Either Text Exp) -> QuasiQuoter
-expParser _parser =
-  exp $ \_inputString -> either (fail . Text.unpack) return $ _parser $ fromString _inputString
+
+verifySql :: Bool
+verifySql = Unsafe.unsafePerformIO $ do
+    mEnv <- System.Environment.lookupEnv "verify_hasql_stmt"
+    case mEnv of
+        Nothing -> pure False
+        Just "" -> pure False
+        _ -> pure True
+
+
+psqlString :: ByteString
+psqlString = Unsafe.unsafePerformIO $ do
+    mEnv <- System.Environment.lookupEnv "psql_conn_string"
+    case mEnv of
+        Nothing -> pure $ fromString "host=localhost port=5433 dbname=kronor user=kronor"
+        Just "" -> pure $ fromString "host=localhost port=5433 dbname=kronor user=kronor"
+        Just xs -> pure $ fromString xs
+
+
+expParser :: (Text -> Either Text Ast.PreparableStmt) -> (Ast.PreparableStmt -> Renaming.InputParams -> Either Text Exp) -> QuasiQuoter
+expParser _parser _parser2 =
+    exp $ \_inputString ->
+        either
+            (fail . Text.unpack)
+            ( \_ast ->
+                do
+                    when verifySql $ do
+                        let sql = Rendering.toByteString . Rendering.preparableStmt $ _ast
+                        ec <- liftIO $ Hasql.Connection.acquire psqlString
+                        c <- either (fail . show) return ec
+                        liftIO $ Hasql.Connection.withLibPQConnection c $ \rc -> do
+                            mr <- LibPQ.prepare rc (fromString "aa") sql Nothing
+                            case mr of
+                                Nothing -> pure ()
+                                Just r -> do
+                                    rs <- LibPQ.resultStatus r
+                                    when (rs `elem` [LibPQ.EmptyQuery, LibPQ.BadResponse, LibPQ.NonfatalError, LibPQ.FatalError]) $ do
+                                        LibPQ.errorMessage rc >>= fail . show
+
+                    let (_renamed_ast, renamedParams) = runState (Renaming.preparableStmt _ast) mempty
+                    either (fail . Text.unpack) return $ _parser2 _renamed_ast renamedParams
+            )
+            $ _parser
+            $ fromString _inputString
+
 
 expPreparableStmtAstParser :: (Ast.PreparableStmt -> Renaming.InputParams -> Either Text Exp) -> QuasiQuoter
 expPreparableStmtAstParser _parser =
-  expParser $ \_input -> do
-    _ast <- first fromString $ Parsing.run (Parsing.atEnd Parsing.preparableStmt) _input
-    let (_renamed_ast, renamedParams) = runState (Renaming.preparableStmt _ast) mempty
-    _parser _renamed_ast renamedParams
+    flip expParser _parser $ \_input -> do
+        first fromString $ Parsing.run (Parsing.atEnd Parsing.preparableStmt) _input
 
 -- * Statement
+
 
 -- |
 -- @
@@ -174,6 +226,7 @@ expPreparableStmtAstParser _parser =
 singletonStatement :: QuasiQuoter
 singletonStatement = expPreparableStmtAstParser (ExpExtraction.undecodedStatement Exp.singleRowResultDecoder)
 
+
 -- |
 -- @
 -- :: `Statement` params (Maybe row)
@@ -188,6 +241,7 @@ singletonStatement = expPreparableStmtAstParser (ExpExtraction.undecodedStatemen
 maybeStatement :: QuasiQuoter
 maybeStatement = expPreparableStmtAstParser (ExpExtraction.undecodedStatement Exp.rowMaybeResultDecoder)
 
+
 -- |
 -- @
 -- :: `Statement` params (`Vector` row)
@@ -201,6 +255,7 @@ maybeStatement = expPreparableStmtAstParser (ExpExtraction.undecodedStatement Ex
 -- ... :: Statement () (Vector Int16)
 vectorStatement :: QuasiQuoter
 vectorStatement = expPreparableStmtAstParser (ExpExtraction.undecodedStatement Exp.rowVectorResultDecoder)
+
 
 -- |
 -- @
@@ -217,6 +272,7 @@ vectorStatement = expPreparableStmtAstParser (ExpExtraction.undecodedStatement E
 foldStatement :: QuasiQuoter
 foldStatement = expPreparableStmtAstParser ExpExtraction.foldStatement
 
+
 -- |
 -- @
 -- :: `Statement` params ()
@@ -231,6 +287,7 @@ foldStatement = expPreparableStmtAstParser ExpExtraction.foldStatement
 -- ... :: Statement (Text, Text) ()
 resultlessStatement :: QuasiQuoter
 resultlessStatement = expPreparableStmtAstParser (ExpExtraction.undecodedStatement (const Exp.noResultResultDecoder))
+
 
 -- |
 -- @
@@ -247,13 +304,16 @@ resultlessStatement = expPreparableStmtAstParser (ExpExtraction.undecodedStateme
 rowsAffectedStatement :: QuasiQuoter
 rowsAffectedStatement = expPreparableStmtAstParser (ExpExtraction.undecodedStatement (const Exp.rowsAffectedResultDecoder))
 
+
 -- * SQL ByteStrings
+
 
 -- |
 -- Quoter of a multiline Unicode SQL string,
 -- which gets converted into a format ready to be used for declaration of statements.
 uncheckedSql :: QuasiQuoter
 uncheckedSql = exp $ return . Exp.byteString . Text.encodeUtf8 . fromString
+
 
 -- |
 -- Read an SQL-file, containing multiple statements,
@@ -268,7 +328,9 @@ uncheckedSql = exp $ return . Exp.byteString . Text.encodeUtf8 . fromString
 uncheckedSqlFile :: QuasiQuoter
 uncheckedSqlFile = quoteFile uncheckedSql
 
+
 -- * Tests
+
 
 -- $
 -- >>> :t [maybeStatement| select (password = $2 :: bytea) :: bool, id :: int4 from "user" where "email" = $1 :: text |]

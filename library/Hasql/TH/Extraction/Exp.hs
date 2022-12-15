@@ -45,6 +45,11 @@ rowDecoder a = do
         c <- traverse columnDecoder (snd <$> b)
         let decoderExp = Exp.cozip c
         pure $ Exp.fmapExp (Exp.tupConsRec recName (coerce hsFields)) decoderExp
+    Just (Ast.HsFunc funcName) -> do
+        let numArgs = length b
+        c <- traverse columnDecoder (snd <$> b)
+        let decoderExp = Exp.cozip c
+        pure $ Exp.fmapExp (Exp.tupFunc funcName numArgs) decoderExp
 
 paramEncoder :: Ast.Typename -> Either Text Exp
 paramEncoder =

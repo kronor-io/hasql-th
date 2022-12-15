@@ -203,13 +203,14 @@ simpleSelect = \case
   BinSimpleSelect _ a _ b -> selectClause a <> selectClause b
 
 targeting = \case
-  NormalTargeting a -> foldMap targetEl a
+  NormalTargeting _ a -> foldMap targetEl a
   AllTargeting a -> foldMap (foldMap targetEl) a
   DistinctTargeting a b -> foldMap exprList a <> foldMap targetEl b
 
 targetList = foldMap targetEl
 
 targetEl = \case
+  HsExprTargetEl (HsField _ tl) -> targetEl tl
   AliasedExprTargetEl a _ -> aExpr a
   ImplicitlyAliasedExprTargetEl a _ -> aExpr a
   ExprTargetEl a -> aExpr a

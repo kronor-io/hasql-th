@@ -35,9 +35,16 @@ paramsEncoder a = do
 
 rowDecoder :: Ast.PreparableStmt -> Either Text Exp
 rowDecoder a = do
-  b <- OutputTypeList.preparableStmt a
-  c <- traverse columnDecoder b
-  return (Exp.cozip c)
+  (mHsTarget, b) <- OutputTypeList.preparableStmt a
+  case mHsTarget of
+    Nothing -> do
+        c <- traverse columnDecoder (snd <$> b)
+        return (Exp.cozip c)
+    Just (Ast.HsRecord recName) -> do
+        let hsFields = fromJust . fst <$> b
+        c <- traverse columnDecoder (snd <$> b)
+        let decoderExp = Exp.cozip c
+        pure $ Exp.fmapExp (Exp.tupConsRec recName (coerce hsFields)) decoderExp
 
 paramEncoder :: Ast.Typename -> Either Text Exp
 paramEncoder =

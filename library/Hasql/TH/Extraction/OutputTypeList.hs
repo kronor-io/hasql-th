@@ -10,10 +10,10 @@ foldable fn = fmap join . traverse fn . toList
 
 preparableStmt = \case
   SelectPreparableStmt a -> selectStmt a
-  InsertPreparableStmt a -> insertStmt a
-  UpdatePreparableStmt a -> updateStmt a
-  DeletePreparableStmt a -> deleteStmt a
-  CallPreparableStmt a -> callStmt a
+  InsertPreparableStmt a -> (\ts -> (Nothing, (Nothing,) <$> ts)) <$> insertStmt a
+  UpdatePreparableStmt a -> (\ts -> (Nothing, (Nothing,) <$> ts)) <$> updateStmt a
+  DeletePreparableStmt a -> (\ts -> (Nothing, (Nothing,) <$> ts)) <$> deleteStmt a
+  CallPreparableStmt a -> (\ts -> (Nothing, (Nothing,) <$> ts)) <$> callStmt a
 
 -- * Call
 
@@ -24,7 +24,7 @@ callStmt (CallStmt a) =
 
 insertStmt (InsertStmt a b c d e) = foldable returningClause e
 
-returningClause = targetList
+returningClause = fmap (fmap snd) . targetList
 
 -- * Update
 
@@ -48,9 +48,10 @@ selectWithParens = \case
 
 selectClause = either simpleSelect selectWithParens
 
+simpleSelect :: SimpleSelect -> Either Text (Maybe HsTarget, [(Maybe HsFieldName, Typename)])
 simpleSelect = \case
-  NormalSimpleSelect a _ _ _ _ _ _ -> foldable targeting a
-  ValuesSimpleSelect a -> valuesClause a
+  NormalSimpleSelect a _ _ _ _ _ _ -> maybe (pure (Nothing, [])) targeting a
+  ValuesSimpleSelect a -> (Nothing,) <$> valuesClause a
   TableSimpleSelect _ -> Left "TABLE cannot be used as a final statement, since it's impossible to specify the output types"
   BinSimpleSelect _ a _ b -> do
     c <- selectClause a
@@ -59,14 +60,18 @@ simpleSelect = \case
       then return c
       else Left "Merged queries produce results of incompatible types"
 
+targeting :: Targeting -> Either Text (Maybe HsTarget, [(Maybe HsFieldName, Typename)])
 targeting = \case
-  NormalTargeting a -> targetList a
-  AllTargeting a -> foldable targetList a
-  DistinctTargeting _ b -> targetList b
+  NormalTargeting (Just hsTarg) a -> (Just hsTarg,) <$> targetList a
+  NormalTargeting Nothing a -> (Nothing,) <$> targetList a
+  AllTargeting a -> (Nothing,) <$> (fmap join . traverse targetList . toList) a
+  DistinctTargeting _ b -> (Nothing,) <$> targetList b
 
-targetList = foldable targetEl
+targetList :: Foldable f => f TargetEl -> Either Text [(Maybe HsFieldName, Typename)]
+targetList = fmap join . traverse targetEl . toList
 
 targetEl = \case
+  HsExprTargetEl (HsField m tl) -> fmap (\(_, tl) -> (m, tl)) <$> targetEl tl
   AliasedExprTargetEl a _ -> aExpr a
   ImplicitlyAliasedExprTargetEl a _ -> aExpr a
   ExprTargetEl a -> aExpr a
@@ -76,11 +81,11 @@ targetEl = \case
       \because it leaves the output types unspecified. \
       \You have to be specific."
 
-valuesClause = foldable (foldable aExpr)
+valuesClause = fmap join . traverse (fmap join. traverse aExpr . toList) . toList
 
 aExpr = \case
   CExprAExpr a -> cExpr a
-  TypecastAExpr _ a -> Right [a]
+  TypecastAExpr _ a -> Right [(Nothing, a)]
   a -> Left "Result expression is missing a typecast"
 
 cExpr = \case

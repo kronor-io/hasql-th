@@ -13,6 +13,7 @@ import Hasql.TH.Prelude hiding (list, sequence_, string)
 import qualified Hasql.TH.Prelude as Prelude
 import Language.Haskell.TH.Syntax
 import qualified TemplateHaskell.Compat.V0208 as Compat
+import qualified Data.Text
 
 -- * Helpers
 
@@ -82,6 +83,36 @@ contrazip = \case
               [AppT (ConT ''Divisible) (VarT _fName)]
               (AppT (VarT _fName) (TupleT 0))
       )
+
+data TestRec = TestRec
+  { testRecId :: Int
+  , testRecName :: Text
+  } deriving (Eq, Show)
+
+-- |
+-- Given an arbitrary length, extract elements from that tuple
+-- to construct a record. When length == 1, there is no tuple it's
+-- just a single element. length is the number of fields
+-- TODO: Generate uniq names in tuple patterns
+--
+-- >>> tupConsRec "TestRec" ["testRecId", "testRecName"]
+-- LamE [TupP [VarP fn1,VarP fn2]] (RecConE TestRec [(testRecId,VarE fn1),(testRecName,VarE fn2)])
+tupConsRec :: Text -> [Text] -> Exp
+tupConsRec consName fields =
+    let lenTuple = length fields
+        fieldExps = (\(tupPlace, tupField) -> (mkName (Data.Text.unpack tupField), VarE (mkName ("fn" ++ show tupPlace)))) <$> zip [1..] fields
+        tupPats = VarP . mkName . ("fn" ++) . show <$> [1..(length fields)]
+        toUpdate = if isConsOrVar
+                   then RecConE (mkName (Data.Text.unpack consName))
+                   else RecUpdE (VarE (mkName (Data.Text.unpack consName)))
+     in if length tupPats == 1
+        then LamE tupPats (toUpdate fieldExps)
+        else LamE [TupP tupPats] (toUpdate fieldExps)
+  where
+    isConsOrVar = isUpper (Data.Text.head consName)
+
+fmapExp :: Exp -> Exp -> Exp
+fmapExp mapper mappee = AppE (AppE (VarE 'fmap) mapper) mappee
 
 -- |
 -- Given a list of applicative functor expressions,

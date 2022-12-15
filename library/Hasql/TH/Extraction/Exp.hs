@@ -5,6 +5,7 @@ import qualified Hasql.Encoders as Encoders
 import qualified Hasql.TH.Construction.Exp as Exp
 import qualified Hasql.TH.Extraction.InputTypeList as InputTypeList
 import qualified Hasql.TH.Extraction.OutputTypeList as OutputTypeList
+import qualified Hasql.TH.Extraction.OutputHsTarget as OutputHsTarget
 import qualified Hasql.TH.Extraction.PrimitiveType as PrimitiveType
 import Hasql.TH.Prelude
 import Language.Haskell.TH
@@ -35,21 +36,12 @@ paramsEncoder a = do
 
 rowDecoder :: Ast.PreparableStmt -> Either Text Exp
 rowDecoder a = do
-  (mHsTarget, b) <- OutputTypeList.preparableStmt a
-  case mHsTarget of
-    Nothing -> do
-        c <- traverse columnDecoder (snd <$> b)
-        return (Exp.cozip c)
-    Just (Ast.HsRecord recName) -> do
-        let hsFields = fromJust . fst <$> b
-        c <- traverse columnDecoder (snd <$> b)
-        let decoderExp = Exp.cozip c
-        pure $ Exp.fmapExp (Exp.tupConsRec recName (coerce hsFields)) decoderExp
-    Just (Ast.HsFunc funcName) -> do
-        let numArgs = length b
-        c <- traverse columnDecoder (snd <$> b)
-        let decoderExp = Exp.cozip c
-        pure $ Exp.fmapExp (Exp.tupFunc funcName numArgs) decoderExp
+  b <- OutputTypeList.preparableStmt a
+  c <- traverse columnDecoder b
+  exps <- OutputHsTarget.preparableStmt a
+  if null exps
+    then return (Exp.cozip c)
+    else pure $ Exp.fmapExp (Exp.mkMapping (length b) exps) (Exp.cozip c)
 
 paramEncoder :: Ast.Typename -> Either Text Exp
 paramEncoder =

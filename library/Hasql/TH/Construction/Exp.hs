@@ -94,6 +94,8 @@ data TestRec = TestRec
 -- to construct a record. When length == 1, there is no tuple it's
 -- just a single element. length is the number of fields
 -- TODO: Generate uniq names in tuple patterns
+-- TODO: Variables might be used with Module prefix in which case
+-- the logic to detect whether it is a constructor or not doesn't work
 --
 -- >>> tupConsRec "TestRec" ["testRecId", "testRecName"]
 -- LamE [TupP [VarP fn1,VarP fn2]] (RecConE TestRec [(testRecId,VarE fn1),(testRecName,VarE fn2)])
@@ -110,6 +112,35 @@ tupConsRec consName fields =
         else LamE [TupP tupPats] (toUpdate fieldExps)
   where
     isConsOrVar = isUpper (Data.Text.head consName)
+
+
+-- |
+-- Given an arbitrary length, extract elements from that tuple
+-- to apply to the target function. When length == 1, there is no tuple it's
+-- just a single element.
+-- TODO: Generate uniq names in tuple patterns
+-- TODO: Variables might be used with Module prefix in which case
+-- the logic to detect whether it is a constructor or not doesn't work
+--
+-- >>> tupFunc "TestRec" 2
+-- LamE [TupP [VarP fn1,VarP fn2]] (AppE (AppE (ConE TestRec) (VarE fn1)) (VarE fn2))
+tupFunc :: Text -> Int -> Exp
+tupFunc funcName numArgs =
+    let tupPats = VarP . mkName . ("fn" ++) . show <$> [1..numArgs]
+        argExps = VarE . mkName . ("fn" ++) . show <$> [1..numArgs]
+        toApp = if isConsOrVar
+                   then ConE (mkName (Data.Text.unpack funcName))
+                   else VarE (mkName (Data.Text.unpack funcName))
+     in if length tupPats == 1
+        then LamE tupPats (go toApp argExps)
+        else LamE [TupP tupPats] (go toApp argExps)
+  where
+    isConsOrVar = isUpper (Data.Text.head funcName)
+    go fn [] = error "No args to apply"
+    go fn [x] = AppE fn x
+    -- go fn [x, y] = AppE (AppE fn x) y
+    -- go fn [x, y, z] = AppE (AppE (AppE fn x) y) z
+    go fn xs = AppE (go fn (init xs) ) (last xs)
 
 fmapExp :: Exp -> Exp -> Exp
 fmapExp mapper mappee = AppE (AppE (VarE 'fmap) mapper) mappee

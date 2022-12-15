@@ -101,15 +101,15 @@ data TestRec = TestRec
 -- LamE [TupP [VarP fn1,VarP fn2]] (RecConE TestRec [(testRecId,VarE fn1),(testRecName,VarE fn2)])
 tupConsRec :: Text -> [Text] -> Exp
 tupConsRec consName fields =
-    let lenTuple = length fields
-        fieldExps = (\(tupPlace, tupField) -> (mkName (Data.Text.unpack tupField), VarE (mkName ("fn" ++ show tupPlace)))) <$> zip [1..] fields
-        tupPats = VarP . mkName . ("fn" ++) . show <$> [1..(length fields)]
-        toUpdate = if isConsOrVar
-                   then RecConE (mkName (Data.Text.unpack consName))
-                   else RecUpdE (VarE (mkName (Data.Text.unpack consName)))
-     in if length tupPats == 1
-        then LamE tupPats (toUpdate fieldExps)
-        else LamE [TupP tupPats] (toUpdate fieldExps)
+  let lenTuple = length fields
+      fieldExps = (\(tupPlace, tupField) -> (mkName (Data.Text.unpack tupField), VarE (mkName ("fn" ++ show tupPlace)))) <$> zip [1..] fields
+      tupPats = VarP . mkName . ("fn" ++) . show <$> [1..(length fields)]
+      toUpdate = if isConsOrVar
+                 then RecConE (mkName (Data.Text.unpack consName))
+                 else RecUpdE (VarE (mkName (Data.Text.unpack consName)))
+   in if length tupPats == 1
+      then LamE tupPats (toUpdate fieldExps)
+      else LamE [TupP tupPats] (toUpdate fieldExps)
   where
     isConsOrVar = isUpper (Data.Text.head consName)
 
@@ -126,14 +126,14 @@ tupConsRec consName fields =
 -- LamE [TupP [VarP fn1,VarP fn2]] (AppE (AppE (ConE TestRec) (VarE fn1)) (VarE fn2))
 tupFunc :: Text -> Int -> Exp
 tupFunc funcName numArgs =
-    let tupPats = VarP . mkName . ("fn" ++) . show <$> [1..numArgs]
-        argExps = VarE . mkName . ("fn" ++) . show <$> [1..numArgs]
-        toApp = if isConsOrVar
-                   then ConE (mkName (Data.Text.unpack funcName))
-                   else VarE (mkName (Data.Text.unpack funcName))
-     in if length tupPats == 1
-        then LamE tupPats (go toApp argExps)
-        else LamE [TupP tupPats] (go toApp argExps)
+  let tupPats = VarP . mkName . ("fn" ++) . show <$> [1..numArgs]
+      argExps = VarE . mkName . ("fn" ++) . show <$> [1..numArgs]
+      toApp = if isConsOrVar
+                 then ConE (mkName (Data.Text.unpack funcName))
+                 else VarE (mkName (Data.Text.unpack funcName))
+   in if length tupPats == 1
+      then LamE tupPats (go toApp argExps)
+      else LamE [TupP tupPats] (go toApp argExps)
   where
     isConsOrVar = isUpper (Data.Text.head funcName)
     go fn [] = error "No args to apply"
@@ -141,6 +141,14 @@ tupFunc funcName numArgs =
     -- go fn [x, y] = AppE (AppE fn x) y
     -- go fn [x, y, z] = AppE (AppE (AppE fn x) y) z
     go fn xs = AppE (go fn (init xs) ) (last xs)
+
+mkMapping :: Int -> [Exp] -> Exp
+mkMapping i exps =
+  let tupPats = VarP . mkName . ("fn" ++) . show <$> [1..i]
+   in if length tupPats == 1
+      then LamE tupPats (head exps)
+      else LamE [TupP tupPats] (TupE (Just <$> exps))
+
 
 fmapExp :: Exp -> Exp -> Exp
 fmapExp mapper mappee = AppE (AppE (VarE 'fmap) mapper) mappee

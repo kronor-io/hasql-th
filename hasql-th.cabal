@@ -35,6 +35,7 @@ library
     Hasql.TH.Extraction.Exp
     Hasql.TH.Extraction.InputTypeList
     Hasql.TH.Extraction.OutputTypeList
+    Hasql.TH.Extraction.OutputHsTarget
     Hasql.TH.Extraction.PlaceholderTypeMap
     Hasql.TH.Extraction.PrimitiveType
     Hasql.TH.Prelude
@@ -50,4 +51,5 @@ library
     template-haskell-compat-v0208 >=0.1.9 && <2,
     text >=1 && <3,
     uuid >=1.3 && <2,
-    vector >=0.12 && <0.14
+    vector >=0.12 && <0.14,
+    mtl

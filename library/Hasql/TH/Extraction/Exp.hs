@@ -33,14 +33,14 @@ paramsEncoder :: Ast.PreparableStmt -> Renaming.InputParams -> Either Text Exp
 paramsEncoder a renamedParams = do
   b <- InputTypeList.preparableStmt a
   c <- traverse paramEncoder b
-  return $ Exp.lmapExp (Exp.mkParamsMapping renamedParams) (Exp.contrazip c)
+  return $ maybe (Exp.contrazip c) (flip Exp.lmapExp (Exp.contrazip c)) (Exp.mkParamsMapping renamedParams)
 
 rowDecoder :: Ast.PreparableStmt -> Either Text Exp
 rowDecoder a = do
   b <- OutputTypeList.preparableStmt a
   c <- traverse columnDecoder b
   exps <- OutputHsTarget.preparableStmt a
-  if null exps
+  if null exps || all (\case VarE _ -> True; _ -> False) exps
     then return (Exp.cozip c)
     else pure $ Exp.fmapExp (Exp.mkMapping (length b) exps) (Exp.cozip c)
 

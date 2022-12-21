@@ -150,7 +150,7 @@ tupFunc funcName numArgs =
     -- go fn [x, y, z] = AppE (AppE (AppE fn x) y) z
     go fn xs = AppE (go fn (init xs) ) (last xs)
 
-mkParamsMapping :: Map (Int, Maybe Text) Int -> Exp
+mkParamsMapping :: Map (Int, Maybe Text) Int -> Maybe Exp
 mkParamsMapping params =
   let paramsList = sortOn snd (Map.toList params)
       numOrigParams = length $ nubBy ((==) `on` (fst . fst)) paramsList
@@ -161,9 +161,12 @@ mkParamsMapping params =
                 <$> paramsList
       rExp = if length rExps == 1 then head rExps else TupE (Just <$> rExps)
   in
-    if length tupPats == 1
-       then LamE tupPats rExp
-       else LamE [TupP tupPats] rExp
+    if null rExps
+       then Nothing
+       else pure $ do
+         if length tupPats == 1
+         then LamE tupPats rExp
+         else LamE [TupP tupPats] rExp
 
 
 mkMapping :: Int -> [Exp] -> Exp

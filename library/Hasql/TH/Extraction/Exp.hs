@@ -11,28 +11,29 @@ import Hasql.TH.Prelude
 import Language.Haskell.TH
 import qualified PostgresqlSyntax.Ast as Ast
 import qualified PostgresqlSyntax.Rendering as Rendering
+import qualified PostgresqlSyntax.Renaming as Renaming
 
-undecodedStatement :: (Exp -> Exp) -> Ast.PreparableStmt -> Either Text Exp
-undecodedStatement _decoderProj _ast =
+undecodedStatement :: (Exp -> Exp) -> Ast.PreparableStmt -> Renaming.InputParams -> Either Text Exp
+undecodedStatement _decoderProj _ast renamedParams =
   let _sql = (Exp.byteString . Rendering.toByteString . Rendering.preparableStmt) _ast
    in do
-        _encoder <- paramsEncoder _ast
+        _encoder <- paramsEncoder _ast renamedParams
         _rowDecoder <- rowDecoder _ast
         return (Exp.statement _sql _encoder (_decoderProj _rowDecoder))
 
-foldStatement :: Ast.PreparableStmt -> Either Text Exp
-foldStatement _ast =
+foldStatement :: Ast.PreparableStmt -> Renaming.InputParams -> Either Text Exp
+foldStatement _ast renamedParams =
   let _sql = (Exp.byteString . Rendering.toByteString . Rendering.preparableStmt) _ast
    in do
-        _encoder <- paramsEncoder _ast
+        _encoder <- paramsEncoder _ast renamedParams
         _rowDecoder <- rowDecoder _ast
         return (Exp.foldStatement _sql _encoder _rowDecoder)
 
-paramsEncoder :: Ast.PreparableStmt -> Either Text Exp
-paramsEncoder a = do
+paramsEncoder :: Ast.PreparableStmt -> Renaming.InputParams -> Either Text Exp
+paramsEncoder a renamedParams = do
   b <- InputTypeList.preparableStmt a
   c <- traverse paramEncoder b
-  return (Exp.contrazip c)
+  return $ Exp.lmapExp (Exp.mkParamsMapping renamedParams) (Exp.contrazip c)
 
 rowDecoder :: Ast.PreparableStmt -> Either Text Exp
 rowDecoder a = do

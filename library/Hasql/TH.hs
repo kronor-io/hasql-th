@@ -115,6 +115,8 @@ import Language.Haskell.TH.Quote
 import Language.Haskell.TH.Syntax
 import qualified PostgresqlSyntax.Ast as Ast
 import qualified PostgresqlSyntax.Parsing as Parsing
+import qualified PostgresqlSyntax.Renaming as Renaming
+import Control.Monad.State (runState)
 
 -- * Helpers
 
@@ -127,11 +129,12 @@ expParser :: (Text -> Either Text Exp) -> QuasiQuoter
 expParser _parser =
   exp $ \_inputString -> either (fail . Text.unpack) return $ _parser $ fromString _inputString
 
-expPreparableStmtAstParser :: (Ast.PreparableStmt -> Either Text Exp) -> QuasiQuoter
+expPreparableStmtAstParser :: (Ast.PreparableStmt -> Renaming.InputParams -> Either Text Exp) -> QuasiQuoter
 expPreparableStmtAstParser _parser =
   expParser $ \_input -> do
     _ast <- first fromString $ Parsing.run (Parsing.atEnd Parsing.preparableStmt) _input
-    _parser _ast
+    let (_renamed_ast, renamedParams) = runState (Renaming.preparableStmt _ast) mempty
+    _parser _renamed_ast renamedParams
 
 -- * Statement
 

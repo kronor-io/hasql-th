@@ -96,21 +96,23 @@ hsTargetEl :: HsTargetEl -> StateT Int (Either Text) Exp
 hsTargetEl = \case
   HsRecTargetEl consName hftl ->
     let errExps = foldable hsFieldTargetEl hftl
-        toUpdate = if isConsOrVar consName
-                 then RecConE (mkName (Data.Text.unpack consName))
-                 else RecUpdE (VarE (mkName (Data.Text.unpack consName)))
+        reifiedName = mkName (Data.Text.unpack consName)
+        toUpdate = if isConsOrVar reifiedName
+                 then RecConE reifiedName
+                 else RecUpdE (VarE reifiedName)
     in toUpdate <$> errExps
   HsFuncTargetEl funcName htl ->
-    let toApp = if isConsOrVar funcName
-                then ConE (mkName (Data.Text.unpack funcName))
-                else VarE (mkName (Data.Text.unpack funcName))
+    let reifiedName = mkName (Data.Text.unpack funcName)
+        toApp = if isConsOrVar reifiedName
+                then ConE reifiedName
+                else VarE reifiedName
     in go toApp <$> hsTargetList htl
   SqlTargetEl _ -> do
     i <- get
     put (i+1)
     pure (VarE (mkName ("fn" ++ show i))) -- targetEl  tl
   where
-    isConsOrVar consName = isUpper (Data.Text.head consName)
+    isConsOrVar name = isUpper (head (nameBase name))
     go fn [] = error "No args to apply"
     go fn [x] = AppE fn x
     -- go fn [x, y] = AppE (AppE fn x) y

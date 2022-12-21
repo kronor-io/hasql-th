@@ -4,6 +4,7 @@ module Hasql.TH.Construction.Exp where
 
 import qualified Data.ByteString as ByteString
 import qualified Data.ByteString.Unsafe as ByteString
+import Data.Functor.Contravariant
 import qualified Data.List.NonEmpty as NonEmpty
 import qualified Data.Vector.Generic as Vector
 import qualified Hasql.Decoders as Decoders
@@ -14,6 +15,10 @@ import qualified Hasql.TH.Prelude as Prelude
 import Language.Haskell.TH.Syntax
 import qualified TemplateHaskell.Compat.V0208 as Compat
 import qualified Data.Text
+import qualified Data.Map.Strict as Map
+import Data.Map.Strict (Map)
+import Data.List (sortOn)
+import qualified Data.Text as Text
 
 -- * Helpers
 
@@ -104,14 +109,15 @@ tupConsRec consName fields =
   let lenTuple = length fields
       fieldExps = (\(tupPlace, tupField) -> (mkName (Data.Text.unpack tupField), VarE (mkName ("fn" ++ show tupPlace)))) <$> zip [1..] fields
       tupPats = VarP . mkName . ("fn" ++) . show <$> [1..(length fields)]
-      toUpdate = if isConsOrVar
-                 then RecConE (mkName (Data.Text.unpack consName))
-                 else RecUpdE (VarE (mkName (Data.Text.unpack consName)))
-   in if length tupPats == 1
+      reifiedName = mkName (Data.Text.unpack consName)
+      toUpdate = if isConsOrVar reifiedName
+                 then RecConE reifiedName
+                 else RecUpdE (VarE reifiedName)
+    in if length tupPats == 1
       then LamE tupPats (toUpdate fieldExps)
       else LamE [TupP tupPats] (toUpdate fieldExps)
   where
-    isConsOrVar = isUpper (Data.Text.head consName)
+     isConsOrVar name = isUpper (head (nameBase name))
 
 
 -- |
@@ -126,21 +132,39 @@ tupConsRec consName fields =
 -- LamE [TupP [VarP fn1,VarP fn2]] (AppE (AppE (ConE TestRec) (VarE fn1)) (VarE fn2))
 tupFunc :: Text -> Int -> Exp
 tupFunc funcName numArgs =
-  let tupPats = VarP . mkName . ("fn" ++) . show <$> [1..numArgs]
-      argExps = VarE . mkName . ("fn" ++) . show <$> [1..numArgs]
-      toApp = if isConsOrVar
-                 then ConE (mkName (Data.Text.unpack funcName))
-                 else VarE (mkName (Data.Text.unpack funcName))
+  let names = mkName . ("fn" ++) . show <$> [1..numArgs]
+      tupPats = VarP <$> names
+      argExps = VarE <$> names
+      reifiedName = mkName (Data.Text.unpack funcName)
+      toApp = if isConsOrVar reifiedName
+                 then ConE reifiedName
+                 else VarE reifiedName
    in if length tupPats == 1
       then LamE tupPats (go toApp argExps)
       else LamE [TupP tupPats] (go toApp argExps)
   where
-    isConsOrVar = isUpper (Data.Text.head funcName)
+    isConsOrVar name = isUpper (head (nameBase name))
     go fn [] = error "No args to apply"
     go fn [x] = AppE fn x
     -- go fn [x, y] = AppE (AppE fn x) y
     -- go fn [x, y, z] = AppE (AppE (AppE fn x) y) z
     go fn xs = AppE (go fn (init xs) ) (last xs)
+
+mkParamsMapping :: Map (Int, Maybe Text) Int -> Exp
+mkParamsMapping params =
+  let paramsList = sortOn snd (Map.toList params)
+      numOrigParams = length $ nubBy ((==) `on` (fst . fst)) paramsList
+      tupPats = VarP . mkName . ("_" ++) . show <$> [1..numOrigParams]
+      rExps = (\(origParam, mHsIdent) ->
+                 let var = VarE (mkName ("_" <> show origParam))
+                  in maybe var (GetFieldE var . Text.unpack) mHsIdent) . fst
+                <$> paramsList
+      rExp = if length rExps == 1 then head rExps else TupE (Just <$> rExps)
+  in
+    if length tupPats == 1
+       then LamE tupPats rExp
+       else LamE [TupP tupPats] rExp
+
 
 mkMapping :: Int -> [Exp] -> Exp
 mkMapping i exps =
@@ -149,6 +173,8 @@ mkMapping i exps =
       then LamE tupPats (head exps)
       else LamE [TupP tupPats] (TupE (Just <$> exps))
 
+lmapExp :: Exp -> Exp -> Exp
+lmapExp mapper mappee = AppE (AppE (VarE 'contramap) mapper) mappee
 
 fmapExp :: Exp -> Exp -> Exp
 fmapExp mapper mappee = AppE (AppE (VarE 'fmap) mapper) mappee

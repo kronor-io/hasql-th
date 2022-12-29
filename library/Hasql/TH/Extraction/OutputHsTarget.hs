@@ -113,7 +113,9 @@ hsTargetEl = \case
     pure (VarE (mkName ("fn" ++ show i))) -- targetEl  tl
   where
     isConsOrVar name = isUpper (head (nameBase name))
-    go fn [] = error "No args to apply"
+    go fn [] = fn
+    -- No args to apply, so assume what you have is a value expression
+    -- or a function with no arguments.
     go fn [x] = AppE fn x
     -- go fn [x, y] = AppE (AppE fn x) y
     -- go fn [x, y, z] = AppE (AppE (AppE fn x) y) z

@@ -174,7 +174,9 @@ mkMapping i exps =
   let tupPats = VarP . mkName . ("fn" ++) . show <$> [1..i]
    in if length tupPats == 1
       then LamE tupPats (head exps)
-      else LamE [TupP tupPats] (TupE (Just <$> exps))
+      else if length exps == 1
+              then LamE [TupP tupPats] (head exps)
+              else LamE [TupP tupPats] (TupE (Just <$> exps))
 
 lmapExp :: Exp -> Exp -> Exp
 lmapExp mapper mappee = AppE (AppE (VarE 'contramap) mapper) mappee

@@ -38,7 +38,7 @@ import Data.Int as Exports
 import Data.IntMap.Strict as Exports (IntMap)
 import Data.IntSet as Exports (IntSet)
 import Data.Ix as Exports
-import Data.List as Exports hiding (all, and, any, concat, concatMap, elem, find, foldl, foldl', foldl1, foldr, foldr1, isSubsequenceOf, mapAccumL, mapAccumR, maximum, maximumBy, minimum, minimumBy, notElem, or, product, sortOn, sum, uncons)
+import Data.List as Exports hiding (all, and, any, concat, concatMap, elem, find, foldl, foldl', foldl1, foldr, foldr1, isSubsequenceOf, mapAccumL, mapAccumR, maximum, maximumBy, minimum, minimumBy, notElem, or, product, sortOn, sum, uncons, unsnoc)
 import Data.List.NonEmpty as Exports (NonEmpty (..))
 import Data.Map.Strict as Exports (Map)
 import Data.Maybe as Exports

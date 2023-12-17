@@ -41,8 +41,8 @@ library
     Hasql.TH.Prelude
   build-depends:
     base >=4.11 && <5,
-    bytestring >=0.10 && <0.12,
-    containers >=0.6 && <0.7,
+    bytestring >=0.10 && <0.13,
+    containers >=0.6 && <0.8,
     contravariant >=1.5.2 && <2,
     foldl >=1.4.5 && <2,
     hasql >=1.4 && <1.7,

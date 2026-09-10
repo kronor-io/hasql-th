@@ -183,12 +183,12 @@ expPreparableStmtAstParser :: (Ast.PreparableStmt -> Ast.InputParams -> Either T
 expPreparableStmtAstParser parser =
   expParser $ \input -> do
     ast <- Ast.parse settings input
-    -- Renumber the tree that still carries its Haskell targets: the row
-    -- decoder is built by walking those targets, so they have to outlive this
-    -- step. Erasure happens in "Hasql.TH.Extraction.Exp" on the way to the
-    -- SQL text. Erasure does not affect the numbering either way - it
-    -- flattens a target list into the same leaves in the same order.
-    let (loweredAst, inputParams) = Ast.renameParams ast
+    -- 'lower' numbers the placeholders as they fall in the tree that will
+    -- actually be rendered - the one with the Haskell targets erased - but
+    -- hands back the tree that still carries them, because the row decoder is
+    -- built by walking those targets. Erasure happens in
+    -- "Hasql.TH.Extraction.Exp" on the way to the SQL text.
+    let (loweredAst, inputParams) = Ast.lower ast
     parser loweredAst inputParams
   where
     settings =

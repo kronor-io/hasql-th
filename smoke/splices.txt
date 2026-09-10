@@ -1,0 +1,276 @@
+smoke/Main.hs:(58,23)-(60,6): Splicing expression
+    ghc-internal:GHC.Internal.TH.Quote.quoteExp
+      singletonStatement
+      "\n\
+      \    select $mkUser (id :: int8, name :: text) from \"user\"\n\
+      \    "
+  ======>
+    Hasql.Engine.Statement.preparable
+      (Data.Text.Internal.pack
+         "SELECT id :: int8, name :: text FROM "user"")
+      (Data.Functor.Contravariant.Divisible.conquer ::
+         forall f. Data.Functor.Contravariant.Divisible.Divisible f =>
+                   f ())
+      (Hasql.Engine.Decoders.Result.singleRow
+         (fmap
+            (\ (fn1, fn2) -> mkUser fn1 fn2)
+            ((<*>)
+               (fmap
+                  (,)
+                  (Hasql.Engine.Decoders.Row.column
+                     (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+                        Hasql.Codecs.Decoders.Value.int8)))
+               (Hasql.Engine.Decoders.Row.column
+                  (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+                     Hasql.Codecs.Decoders.Value.text)))))
+smoke/Main.hs:(72,23)-(74,6): Splicing expression
+    ghc-internal:GHC.Internal.TH.Quote.quoteExp
+      singletonStatement
+      "\n\
+      \    select $Flag (), id :: int8, name :: text from \"user\"\n\
+      \    "
+  ======>
+    Hasql.Engine.Statement.preparable
+      (Data.Text.Internal.pack
+         "SELECT id :: int8, name :: text FROM "user"")
+      (Data.Functor.Contravariant.Divisible.conquer ::
+         forall f. Data.Functor.Contravariant.Divisible.Divisible f =>
+                   f ())
+      (Hasql.Engine.Decoders.Result.singleRow
+         (fmap
+            (\ (fn1, fn2) -> (Flag, fn1, fn2))
+            ((<*>)
+               (fmap
+                  (,)
+                  (Hasql.Engine.Decoders.Row.column
+                     (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+                        Hasql.Codecs.Decoders.Value.int8)))
+               (Hasql.Engine.Decoders.Row.column
+                  (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+                     Hasql.Codecs.Decoders.Value.text)))))
+smoke/Main.hs:(79,23)-(81,6): Splicing expression
+    ghc-internal:GHC.Internal.TH.Quote.quoteExp
+      singletonStatement
+      "\n\
+      \    select $User (id :: int8, name :: text) from \"user\"\n\
+      \    "
+  ======>
+    Hasql.Engine.Statement.preparable
+      (Data.Text.Internal.pack
+         "SELECT id :: int8, name :: text FROM "user"")
+      (Data.Functor.Contravariant.Divisible.conquer ::
+         forall f. Data.Functor.Contravariant.Divisible.Divisible f =>
+                   f ())
+      (Hasql.Engine.Decoders.Result.singleRow
+         (fmap
+            (\ (fn1, fn2) -> User fn1 fn2)
+            ((<*>)
+               (fmap
+                  (,)
+                  (Hasql.Engine.Decoders.Row.column
+                     (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+                        Hasql.Codecs.Decoders.Value.int8)))
+               (Hasql.Engine.Decoders.Row.column
+                  (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+                     Hasql.Codecs.Decoders.Value.text)))))
+smoke/Main.hs:(86,23)-(88,6): Splicing expression
+    ghc-internal:GHC.Internal.TH.Quote.quoteExp
+      singletonStatement
+      "\n\
+      \    select $User {userId = id :: int8, userName = name :: text} from \"user\"\n\
+      \    "
+  ======>
+    Hasql.Engine.Statement.preparable
+      (Data.Text.Internal.pack
+         "SELECT id :: int8, name :: text FROM "user"")
+      (Data.Functor.Contravariant.Divisible.conquer ::
+         forall f. Data.Functor.Contravariant.Divisible.Divisible f =>
+                   f ())
+      (Hasql.Engine.Decoders.Result.singleRow
+         (fmap
+            (\ (fn1, fn2) -> User {userId = fn1, userName = fn2})
+            ((<*>)
+               (fmap
+                  (,)
+                  (Hasql.Engine.Decoders.Row.column
+                     (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+                        Hasql.Codecs.Decoders.Value.int8)))
+               (Hasql.Engine.Decoders.Row.column
+                  (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+                     Hasql.Codecs.Decoders.Value.text)))))
+smoke/Main.hs:(93,23)-(95,6): Splicing expression
+    ghc-internal:GHC.Internal.TH.Quote.quoteExp
+      singletonStatement
+      "\n\
+      \    select $defaultUser {userName = name :: text} from \"user\"\n\
+      \    "
+  ======>
+    Hasql.Engine.Statement.preparable
+      (Data.Text.Internal.pack "SELECT name :: text FROM "user"")
+      (Data.Functor.Contravariant.Divisible.conquer ::
+         forall f. Data.Functor.Contravariant.Divisible.Divisible f =>
+                   f ())
+      (Hasql.Engine.Decoders.Result.singleRow
+         (fmap
+            (\ fn1 -> defaultUser {userName = fn1})
+            (Hasql.Engine.Decoders.Row.column
+               (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+                  Hasql.Codecs.Decoders.Value.text))))
+smoke/Main.hs:(100,23)-(102,6): Splicing expression
+    ghc-internal:GHC.Internal.TH.Quote.quoteExp
+      singletonStatement
+      "\n\
+      \    select $User {userId = $widen (id :: int4), userName = name :: text} from \"user\"\n\
+      \    "
+  ======>
+    Hasql.Engine.Statement.preparable
+      (Data.Text.Internal.pack
+         "SELECT id :: int4, name :: text FROM "user"")
+      (Data.Functor.Contravariant.Divisible.conquer ::
+         forall f. Data.Functor.Contravariant.Divisible.Divisible f =>
+                   f ())
+      (Hasql.Engine.Decoders.Result.singleRow
+         (fmap
+            (\ (fn1, fn2) -> User {userId = widen fn1, userName = fn2})
+            ((<*>)
+               (fmap
+                  (,)
+                  (Hasql.Engine.Decoders.Row.column
+                     (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+                        Hasql.Codecs.Decoders.Value.int4)))
+               (Hasql.Engine.Decoders.Row.column
+                  (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+                     Hasql.Codecs.Decoders.Value.text)))))
+smoke/Main.hs:(107,23)-(109,6): Splicing expression
+    ghc-internal:GHC.Internal.TH.Quote.quoteExp
+      singletonStatement
+      "\n\
+      \    select $mkUser (id :: int8, name :: text), created :: text from \"user\"\n\
+      \    "
+  ======>
+    Hasql.Engine.Statement.preparable
+      (Data.Text.Internal.pack
+         "SELECT id :: int8, name :: text, created :: text FROM "user"")
+      (Data.Functor.Contravariant.Divisible.conquer ::
+         forall f. Data.Functor.Contravariant.Divisible.Divisible f =>
+                   f ())
+      (Hasql.Engine.Decoders.Result.singleRow
+         (fmap
+            (\ (fn1, fn2, fn3) -> (mkUser fn1 fn2, fn3))
+            ((<*>)
+               ((<*>)
+                  (fmap
+                     (,,)
+                     (Hasql.Engine.Decoders.Row.column
+                        (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+                           Hasql.Codecs.Decoders.Value.int8)))
+                  (Hasql.Engine.Decoders.Row.column
+                     (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+                        Hasql.Codecs.Decoders.Value.text)))
+               (Hasql.Engine.Decoders.Row.column
+                  (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+                     Hasql.Codecs.Decoders.Value.text)))))
+smoke/Main.hs:(115,23)-(120,6): Splicing expression
+    ghc-internal:GHC.Internal.TH.Quote.quoteExp
+      singletonStatement
+      "\n\
+      \    select id :: int8 from \"user\"\n\
+      \    where merchant = $1.$merchantId :: int4\n\
+      \      and key = $1.$signatureKey :: text\n\
+      \      and status = $2 :: text\n\
+      \    "
+  ======>
+    Hasql.Engine.Statement.preparable
+      (Data.Text.Internal.pack
+         "SELECT id :: int8 FROM "user" WHERE merchant = $1 :: int4 AND key = $2 :: text AND status = $3 :: text")
+      (Data.Functor.Contravariant.contramap
+         (\ (_1, _2) -> (_1.merchantId, _1.signatureKey, _2))
+         (Data.Functor.Contravariant.Divisible.divide
+            (\ (_0, _1, _2) -> (_0, (_1, _2)))
+            (Hasql.Codecs.Encoders.Params.param
+               (Hasql.Codecs.Encoders.NullableOrNot.nonNullable
+                  Hasql.Codecs.Encoders.Value.int4))
+            (Data.Functor.Contravariant.Divisible.divide
+               (\ (_0, _1) -> (_0, _1))
+               (Hasql.Codecs.Encoders.Params.param
+                  (Hasql.Codecs.Encoders.NullableOrNot.nonNullable
+                     Hasql.Codecs.Encoders.Value.text))
+               (Hasql.Codecs.Encoders.Params.param
+                  (Hasql.Codecs.Encoders.NullableOrNot.nonNullable
+                     Hasql.Codecs.Encoders.Value.text)))))
+      (Hasql.Engine.Decoders.Result.singleRow
+         (Hasql.Engine.Decoders.Row.column
+            (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+               Hasql.Codecs.Decoders.Value.int8)))
+smoke/Main.hs:(126,23)-(128,6): Splicing expression
+    ghc-internal:GHC.Internal.TH.Quote.quoteExp
+      singletonStatement
+      "\n\
+      \    select id :: int8 from \"user\" where merchant = $1.$merchantId :: int4\n\
+      \    "
+  ======>
+    Hasql.Engine.Statement.preparable
+      (Data.Text.Internal.pack
+         "SELECT id :: int8 FROM "user" WHERE merchant = $1 :: int4")
+      (Data.Functor.Contravariant.contramap
+         (\ _1 -> _1.merchantId)
+         (Hasql.Codecs.Encoders.Params.param
+            (Hasql.Codecs.Encoders.NullableOrNot.nonNullable
+               Hasql.Codecs.Encoders.Value.int4)))
+      (Hasql.Engine.Decoders.Result.singleRow
+         (Hasql.Engine.Decoders.Row.column
+            (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+               Hasql.Codecs.Decoders.Value.int8)))
+smoke/Main.hs:(134,23)-(136,6): Splicing expression
+    ghc-internal:GHC.Internal.TH.Quote.quoteExp
+      singletonStatement
+      "\n\
+      \    select $mkNote (id :: int8, note :: text?) from \"note\"\n\
+      \    "
+  ======>
+    Hasql.Engine.Statement.preparable
+      (Data.Text.Internal.pack
+         "SELECT id :: int8, note :: text FROM "note"")
+      (Data.Functor.Contravariant.Divisible.conquer ::
+         forall f. Data.Functor.Contravariant.Divisible.Divisible f =>
+                   f ())
+      (Hasql.Engine.Decoders.Result.singleRow
+         (fmap
+            (\ (fn1, fn2) -> mkNote fn1 fn2)
+            ((<*>)
+               (fmap
+                  (,)
+                  (Hasql.Engine.Decoders.Row.column
+                     (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+                        Hasql.Codecs.Decoders.Value.int8)))
+               (Hasql.Engine.Decoders.Row.column
+                  (Hasql.Codecs.Decoders.NullableOrNot.nullable
+                     Hasql.Codecs.Decoders.Value.text)))))
+smoke/Main.hs:(142,20)-(144,6): Splicing expression
+    ghc-internal:GHC.Internal.TH.Quote.quoteExp
+      vectorStatement
+      "\n\
+      \    select id :: int8, name :: text from \"user\" where merchant = $1 :: int4 and status = $2 :: text\n\
+      \    "
+  ======>
+    Hasql.Engine.Statement.preparable
+      (Data.Text.Internal.pack
+         "SELECT id :: int8, name :: text FROM "user" WHERE merchant = $1 :: int4 AND status = $2 :: text")
+      (Data.Functor.Contravariant.Divisible.divide
+         (\ (_0, _1) -> (_0, _1))
+         (Hasql.Codecs.Encoders.Params.param
+            (Hasql.Codecs.Encoders.NullableOrNot.nonNullable
+               Hasql.Codecs.Encoders.Value.int4))
+         (Hasql.Codecs.Encoders.Params.param
+            (Hasql.Codecs.Encoders.NullableOrNot.nonNullable
+               Hasql.Codecs.Encoders.Value.text)))
+      (Hasql.Engine.Decoders.Result.rowVector
+         ((<*>)
+            (fmap
+               (,)
+               (Hasql.Engine.Decoders.Row.column
+                  (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+                     Hasql.Codecs.Decoders.Value.int8)))
+            (Hasql.Engine.Decoders.Row.column
+               (Hasql.Codecs.Decoders.NullableOrNot.nonNullable
+                  Hasql.Codecs.Decoders.Value.text))))

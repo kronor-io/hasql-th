@@ -113,8 +113,10 @@ cozip = \case
 -- @\\(_1, _2) -> (_1.merchantId, _1.signatureKey, _2)@
 --
 -- A single original parameter binds a plain variable rather than a
--- one-element tuple pattern, and 'Nothing' comes back when the statement has
--- no parameters at all, in which case the caller emits no @contramap@.
+-- one-element tuple pattern. 'Nothing' comes back when the lambda would be
+-- the identity - no parameters at all, or none interpolated and none
+-- renumbered - and the caller then emits no @contramap@, so a statement using
+-- no extension compiles to exactly what upstream emits.
 mkParamsMapping :: Map (Int, Maybe Text) Int -> Maybe Exp
 mkParamsMapping params =
   let paramsList = sortOn snd (Map.toList params)
@@ -128,7 +130,8 @@ mkParamsMapping params =
           . fst
           <$> paramsList
       rExp = if length rExps == 1 then head rExps else TupE (Just <$> rExps)
-   in if null rExps
+      isIdentity = all (\((orig, field), slot) -> isNothing field && orig == slot) paramsList
+   in if null rExps || isIdentity
         then Nothing
         else
           pure

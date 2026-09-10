@@ -183,8 +183,13 @@ expPreparableStmtAstParser :: (Ast.PreparableStmt -> Ast.InputParams -> Either T
 expPreparableStmtAstParser parser =
   expParser $ \input -> do
     ast <- Ast.parse settings input
-    let (renamedAst, inputParams) = Ast.renameParams ast
-    parser renamedAst inputParams
+    -- 'lower' numbers the placeholders as they fall in the tree that will
+    -- actually be rendered - the one with the Haskell targets erased - but
+    -- hands back the tree that still carries them, because the row decoder is
+    -- built by walking those targets. Erasure happens in
+    -- "Hasql.TH.Extraction.Exp" on the way to the SQL text.
+    let (loweredAst, inputParams) = Ast.lower ast
+    parser loweredAst inputParams
   where
     settings =
       mconcat

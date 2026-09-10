@@ -204,9 +204,19 @@ simpleSelect = \case
   BinSimpleSelect _ a _ b -> selectClause a <> selectClause b
 
 targeting = \case
-  NormalTargeting a -> targetList a
+  NormalTargeting a -> hsTargetList a
   AllTargeting a -> foldMap targetList a
   DistinctTargeting a b -> foldMap exprList a <> targetList b
+
+-- Same left-to-right leaf order as "Hasql.TH.Extraction.OutputTypeList".
+hsTargetList (HsTargetList a) = foldMap hsTargetEl a
+
+hsTargetEl = \case
+  HsRecTargetEl _ a -> foldMap hsFieldTargetEl a
+  HsFuncTargetEl _ a -> foldMap hsTargetEl a
+  SqlTargetEl a -> targetEl a
+
+hsFieldTargetEl (HsFieldEl _ a) = hsTargetEl a
 
 targetList (TargetList a) = foldMap targetEl a
 

@@ -2,6 +2,8 @@
 -- Expression construction.
 module Hasql.TH.Construction.Exp where
 
+import Data.List (sortOn)
+import qualified Data.Map.Strict as Map
 import qualified Data.Text as Text
 import qualified Data.Vector.Generic as Vector
 import qualified Hasql.Decoders as Decoders
@@ -92,6 +94,75 @@ cozip = \case
           (AppE (AppE (VarE 'fmap) (tuple len)) hd)
           tl
   [] -> AppE (VarE 'pure) (TupE [])
+
+-- * Kronor extensions
+
+-- |
+-- Build the lambda that maps the tuple of Haskell-level parameters the user
+-- writes onto the dense tuple of placeholders the lowered SQL actually has.
+--
+-- The input is the mapping produced by
+-- 'PostgresqlSyntax.Lowering.renameParams': it keys each placeholder by its
+-- original @$n@ index and, for an interpolated one, the record field it
+-- selects, and maps that to the dense slot.
+--
+-- The lambda\'s arity is the number of distinct /original/ indices, and its
+-- body is the tuple of slot expressions in dense-slot order. So a statement
+-- written with @$1.merchantId@, @$1.signatureKey@ and @$2@ gives
+--
+-- @\\(_1, _2) -> (_1.merchantId, _1.signatureKey, _2)@
+--
+-- A single original parameter binds a plain variable rather than a
+-- one-element tuple pattern, and 'Nothing' comes back when the statement has
+-- no parameters at all, in which case the caller emits no @contramap@.
+mkParamsMapping :: Map (Int, Maybe Text) Int -> Maybe Exp
+mkParamsMapping params =
+  let paramsList = sortOn snd (Map.toList params)
+      numOrigParams = length (nubBy ((==) `on` (fst . fst)) paramsList)
+      tupPats = VarP . mkName . ("_" ++) . show <$> [1 .. numOrigParams]
+      rExps =
+        ( \(origParam, mHsIdent) ->
+            let var = VarE (mkName ("_" <> show origParam))
+             in maybe var (GetFieldE var . Text.unpack) mHsIdent
+        )
+          . fst
+          <$> paramsList
+      rExp = if length rExps == 1 then head rExps else TupE (Just <$> rExps)
+   in if null rExps
+        then Nothing
+        else
+          pure
+            ( if length tupPats == 1
+                then LamE tupPats rExp
+                else LamE [TupP tupPats] rExp
+            )
+
+-- |
+-- Build the lambda that maps the tuple of @n@ decoded columns onto the tuple
+-- of Haskell target expressions.
+--
+-- The column variables are named @fn1@ ... @fnN@, matching the names
+-- "Hasql.TH.Extraction.OutputHsTarget" gives them, and there are three shapes:
+-- one column binds a plain variable, one target over several columns binds a
+-- tuple pattern and returns that single expression unwrapped rather than as a
+-- one-element tuple, and anything else returns the tuple of targets.
+mkMapping :: Int -> [Exp] -> Exp
+mkMapping i exps =
+  let tupPats = VarP . mkName . ("fn" ++) . show <$> [1 .. i]
+   in if length tupPats == 1
+        then LamE tupPats (head exps)
+        else
+          if length exps == 1
+            then LamE [TupP tupPats] (head exps)
+            else LamE [TupP tupPats] (TupE (Just <$> exps))
+
+-- | @contramap mapper mappee@.
+lmapExp :: Exp -> Exp -> Exp
+lmapExp mapper mappee = AppE (AppE (VarE 'contramap) mapper) mappee
+
+-- | @fmap mapper mappee@.
+fmapExp :: Exp -> Exp -> Exp
+fmapExp mapper mappee = AppE (AppE (VarE 'fmap) mapper) mappee
 
 -- |
 -- Lambda expression, which destructures 'Fold'.

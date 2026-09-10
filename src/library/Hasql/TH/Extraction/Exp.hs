@@ -4,39 +4,52 @@ import qualified Hasql.Decoders as Decoders
 import qualified Hasql.Encoders as Encoders
 import qualified Hasql.TH.Construction.Exp as Exp
 import qualified Hasql.TH.Extraction.InputTypeList as InputTypeList
+import qualified Hasql.TH.Extraction.OutputHsTarget as OutputHsTarget
 import qualified Hasql.TH.Extraction.OutputTypeList as OutputTypeList
 import qualified Hasql.TH.Extraction.PrimitiveType as PrimitiveType
 import Hasql.TH.Prelude
 import Language.Haskell.TH
 import qualified PostgresqlSyntax as Ast
 
-undecodedStatement :: (Exp -> Exp) -> Ast.PreparableStmt -> Either Text Exp
-undecodedStatement decoderProj ast =
-  let sql = (Exp.text . Ast.toText mempty) ast
-   in do
-        encoder <- paramsEncoder ast
-        rowDecoder' <- rowDecoder ast
-        return (Exp.statement sql encoder (decoderProj rowDecoder'))
+-- |
+-- The SQL text the statement is compiled to: the AST with the Haskell targets
+-- erased, rendered at 'mempty' settings so that the nullability markers are
+-- dropped too. The placeholders have already been renumbered densely by
+-- "PostgresqlSyntax.Lowering" before the AST reaches here.
+sql :: Ast.PreparableStmt -> Exp
+sql = Exp.text . Ast.toText mempty . Ast.eraseHaskellTargets
 
-foldStatement :: Ast.PreparableStmt -> Either Text Exp
-foldStatement ast =
-  let sql = (Exp.text . Ast.toText mempty) ast
-   in do
-        encoder <- paramsEncoder ast
-        rowDecoder' <- rowDecoder ast
-        return (Exp.foldStatement sql encoder rowDecoder')
+undecodedStatement :: (Exp -> Exp) -> Ast.PreparableStmt -> Ast.InputParams -> Either Text Exp
+undecodedStatement decoderProj ast renamedParams =
+  do
+    encoder <- paramsEncoder ast renamedParams
+    rowDecoder' <- rowDecoder ast
+    return (Exp.statement (sql ast) encoder (decoderProj rowDecoder'))
 
-paramsEncoder :: Ast.PreparableStmt -> Either Text Exp
-paramsEncoder a = do
+foldStatement :: Ast.PreparableStmt -> Ast.InputParams -> Either Text Exp
+foldStatement ast renamedParams =
+  do
+    encoder <- paramsEncoder ast renamedParams
+    rowDecoder' <- rowDecoder ast
+    return (Exp.foldStatement (sql ast) encoder rowDecoder')
+
+paramsEncoder :: Ast.PreparableStmt -> Ast.InputParams -> Either Text Exp
+paramsEncoder a renamedParams = do
   b <- InputTypeList.preparableStmt a
   c <- traverse paramEncoder b
-  return (Exp.contrazip c)
+  return (maybe (Exp.contrazip c) (flip Exp.lmapExp (Exp.contrazip c)) (Exp.mkParamsMapping renamedParams))
 
 rowDecoder :: Ast.PreparableStmt -> Either Text Exp
 rowDecoder a = do
   b <- OutputTypeList.preparableStmt a
   c <- traverse columnDecoder b
-  return (Exp.cozip c)
+  exps <- OutputHsTarget.preparableStmt a
+  -- When every top-level target is a bare SQL column the mapping lambda would
+  -- be the identity, so it is skipped and the emitted code stays identical to
+  -- what upstream emits for a statement using no extension.
+  if null exps || all (\case VarE _ -> True; _ -> False) exps
+    then return (Exp.cozip c)
+    else return (Exp.fmapExp (Exp.mkMapping (length b) exps) (Exp.cozip c))
 
 paramEncoder :: Ast.Typename -> Either Text Exp
 paramEncoder =

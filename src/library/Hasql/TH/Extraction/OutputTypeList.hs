@@ -63,11 +63,29 @@ simpleSelect = \case
       then return c
       else Left "Merged queries produce results of incompatible types"
 
+targeting :: Targeting -> Either Text [Typename]
 targeting = \case
-  NormalTargeting a -> targetList a
+  NormalTargeting a -> hsTargetList a
   AllTargeting a -> foldable targetList a
   DistinctTargeting _ b -> targetList b
 
+-- |
+-- Collect the 'SqlTargetEl' leaves of a Haskell target list, depth-first and
+-- left-to-right. That is the order the columns come back in, and it must stay
+-- the order "Hasql.TH.Extraction.OutputHsTarget" ticks its @fn@ counter in.
+hsTargetList :: HsTargetList -> Either Text [Typename]
+hsTargetList (HsTargetList a) = foldable hsTargetEl a
+
+hsTargetEl :: HsTargetEl -> Either Text [Typename]
+hsTargetEl = \case
+  HsRecTargetEl _ a -> foldable hsFieldTargetEl a
+  HsFuncTargetEl _ a -> foldable hsTargetEl a
+  SqlTargetEl a -> targetEl a
+
+hsFieldTargetEl :: HsFieldTargetEl -> Either Text [Typename]
+hsFieldTargetEl (HsFieldEl _ a) = hsTargetEl a
+
+targetList :: TargetList -> Either Text [Typename]
 targetList (TargetList a) = foldable targetEl a
 
 targetEl = \case

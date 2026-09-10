@@ -126,15 +126,18 @@ expParser :: (Text -> Either Text Exp) -> QuasiQuoter
 expParser parser =
   exp $ \inputString -> either (fail . Text.unpack) return $ parser $ fromString inputString
 
-expPreparableStmtAstParser :: (Ast.PreparableStmt -> Either Text Exp) -> QuasiQuoter
+expPreparableStmtAstParser :: (Ast.PreparableStmt -> Ast.InputParams -> Either Text Exp) -> QuasiQuoter
 expPreparableStmtAstParser parser =
   expParser $ \input -> do
     ast <- Ast.parse settings input
-    parser ast
+    let (renamedAst, inputParams) = Ast.renameParams ast
+    parser renamedAst inputParams
   where
     settings =
       mconcat
-        [ Ast.nullabilityMarkers True
+        [ Ast.nullabilityMarkers True,
+          Ast.haskellTargets True,
+          Ast.haskellParamFields True
         ]
 
 -- * Statement

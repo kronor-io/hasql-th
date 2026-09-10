@@ -88,6 +88,59 @@ module Hasql.TH
     --    :: Data.Vector.Generic.Base.Vector v (Maybe Int32) =>
     --       Statement () (Maybe (v (Maybe Int32)))
 
+    --  === Haskell function and constructor targets
+    --
+    --  A select-list target may be a Haskell function or data constructor
+    --  applied to the columns that follow it, written @$name (col1, col2)@.
+    --  The columns are decoded as usual and the result of the application
+    --  becomes that position of the row.
+    --
+    --  >>> data User = User { userId :: Int32, userName :: Text }
+    --  >>> :t [singletonStatement| select $User (id :: int4, name :: text) from "user" |]
+    --  ... :: Statement () User
+    --
+    --  A name whose first character is upper case is treated as a data
+    --  constructor, any other name as an ordinary function, so
+    --  @$mkUser (...)@ calls the function @mkUser@. Applications nest, and a
+    --  target list may freely mix Haskell targets with plain SQL ones. Writing
+    --  no arguments at all, @$defaultUser ()@, is a bare value rather than an
+    --  application and consumes no columns.
+    --
+    --  === Haskell record targets
+    --
+    --  A target written @$name {field = col, ...}@ builds or updates a record.
+    --  An upper-case name is record construction, a lower-case one is record
+    --  update of the value that name refers to.
+    --
+    --  >>> :t [singletonStatement| select $User {userId = id :: int4, userName = name :: text} from "user" |]
+    --  ... :: Statement () User
+    --
+    --  Field values are themselves targets, so they may be nested Haskell
+    --  targets rather than plain columns.
+    --
+    --  === Haskell fields on parameter placeholders
+    --
+    --  A placeholder may select a field of the Haskell value it is given,
+    --  written @$1.$field@. Every distinct @(placeholder, field)@ pair becomes
+    --  one parameter of the emitted statement, and the statement's parameter
+    --  type is the tuple of the /original/ placeholders, so several fields of
+    --  one value cost one parameter rather than several.
+    --
+    --  >>> data Merchant = Merchant { merchantId :: Int32, signatureKey :: Text }
+    --  >>> :{
+    --    :t [singletonStatement|
+    --         select id :: int4 from "user"
+    --         where merchant = $1.$merchantId :: int4
+    --           and key = $1.$signatureKey :: text
+    --           and status = $2 :: text
+    --         |]
+    --  :}
+    --  ... :: Statement (Merchant, Text) Int32
+    --
+    --  This requires @OverloadedRecordDot@ at the use site, since the emitted
+    --  code selects the fields with it. Repeating a pair reuses its parameter,
+    --  and a bare @$1@ is a different parameter from @$1.$field@.
+
     -- ** Row-parsing statements
     singletonStatement,
     maybeStatement,

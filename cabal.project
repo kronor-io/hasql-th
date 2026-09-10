@@ -1,4 +1,7 @@
-packages: .
+packages:
+  .
+  ../postgresql-syntax
+
 allow-newer:
   , *:base
   , *:template-haskell

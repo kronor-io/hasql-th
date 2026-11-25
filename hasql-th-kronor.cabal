@@ -1,20 +1,25 @@
 cabal-version: 3.0
-name: hasql-th
+name: hasql-th-kronor
 version: 0.5.1.1
 category: Hasql, Database, PostgreSQL, Template Haskell
-synopsis: Template Haskell utilities for Hasql
+synopsis: Template Haskell utilities for Hasql, with Kronor's quasiquote extensions
 description:
-  Extension-library for Hasql,
+  Kronor's fork of "hasql-th", an extension-library for Hasql,
   bringing compile-time syntax checking,
   great simplification of declaration of statements and
   other TemplateHaskell-based utilities.
 
-  For details please see <https://github.com/nikita-volkov/hasql-th the readme>.
+  The quasiquotes also accept Haskell function, constructor and record
+  targets in the select list, and Haskell fields on parameter placeholders
+  (documented in "Hasql.TH"). It exposes the same modules as "hasql-th" and
+  parses with "postgresql-syntax-kronor".
 
-homepage: https://github.com/nikita-volkov/hasql-th
-bug-reports: https://github.com/nikita-volkov/hasql-th/issues
+  For details please see <https://github.com/kronor-io/hasql-th the readme>.
+
+homepage: https://github.com/kronor-io/hasql-th
+bug-reports: https://github.com/kronor-io/hasql-th/issues
 author: Nikita Volkov <nikita.y.volkov@mail.ru>
-maintainer: Nikita Volkov <nikita.y.volkov@mail.ru>
+maintainer: José Lorenzo Rodríguez <lorenzo@kronor.io>
 copyright: (c) 2015, Nikita Volkov
 license: MIT
 license-file: LICENSE
@@ -24,7 +29,8 @@ extra-doc-files:
 
 source-repository head
   type: git
-  location: https://github.com/nikita-volkov/hasql-th
+  location: https://github.com/kronor-io/hasql-th
+  branch: hackage
 
 common base
   default-language: Haskell2010
@@ -104,7 +110,7 @@ library
     contravariant >=1.5.2 && <2,
     foldl >=1.4.5 && <2,
     hasql >=1.10 && <1.11 || >=2.0 && <2.1,
-    postgresql-syntax >=0.5 && <0.6,
+    postgresql-syntax-kronor ^>=0.5.0.3,
     template-haskell >=2.8 && <3,
     template-haskell-compat-v0208 >=0.1.9 && <0.2,
     text >=1 && <3,
@@ -112,19 +118,28 @@ library
     uuid >=1.3 && <2,
     vector >=0.12 && <0.14,
 
+-- Write the smoke test's spliced code to dist-newstyle, to read what each
+-- extension expands to: cabal test -f dump-splices
+flag dump-splices
+  description: Dump the smoke test's Template Haskell splices to files.
+  default: False
+  manual: True
+
 test-suite smoke
   type: exitcode-stdio-1.0
   default-language: Haskell2010
   hs-source-dirs: smoke
   main-is: Main.hs
-  ghc-options:
-    -ddump-splices
-    -ddump-to-file
-    -dsuppress-uniques
+
+  if flag(dump-splices)
+    ghc-options:
+      -ddump-splices
+      -ddump-to-file
+      -dsuppress-uniques
 
   build-depends:
     base >=4.11 && <5,
     hasql >=2.0 && <2.1,
-    hasql-th,
+    hasql-th-kronor,
     text >=1 && <3,
     vector >=0.12 && <0.14,
